@@ -5,9 +5,15 @@ client:
   b:
     base-url: http://localhost:8082
 
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%msg %n"
+    
 resilience4j:
   retry:
-    instances:
+    configs:
       bService:
         # Tổng số lần thử = 1 (lần đầu) + (max-attempts - 1) retry.
         # Ví dụ max-attempts=3 => tối đa gọi B 3 lần.
@@ -20,15 +26,15 @@ resilience4j:
         retry-exceptions:
           - java.util.concurrent.TimeoutException
           - org.springframework.web.client.RestClientException
-#  timelimiter:
-#    instances:
-#      bService:
-#        # Giới hạn thời gian cho việc hoàn thành call (A -> B).
-#        # Nếu vượt quá thì TimeLimiter timeout và A sẽ chuyển sang retry/fallback tùy annotation.
-#        timeout-duration: 4s
-#        # Khi timeout xảy ra, cố gắng hủy “future” đang chạy (tùy implement).
-#        # Mục tiêu là tránh giữ thread/chờ tài nguyên quá lâu.
-#        cancel-running-future: true
+  #  timelimiter:
+  #    instances:
+  #      bService:
+  #        # Giới hạn thời gian cho việc hoàn thành call (A -> B).
+  #        # Nếu vượt quá thì TimeLimiter timeout và A sẽ chuyển sang retry/fallback tùy annotation.
+  #        timeout-duration: 4s
+  #        # Khi timeout xảy ra, cố gắng hủy “future” đang chạy (tùy implement).
+  #        # Mục tiêu là tránh giữ thread/chờ tài nguyên quá lâu.
+  #        cancel-running-future: true
   circuitbreaker:
     instances:
       bService:

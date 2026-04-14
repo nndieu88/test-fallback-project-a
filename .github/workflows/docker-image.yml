@@ -2,21 +2,46 @@ name: Build & Push Docker
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  docker:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug info
+        run: |
+          docker --version
+
       - name: Login Docker Hub
-        run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+        run: |
+          echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
 
-      - name: Build
-        run: docker build -t ${{ secrets.DOCKER_USER }}/app1:latest .
+      - name: Build Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USER }}/app1:latest .
 
-      - name: Push
-        run: docker push ${{ secrets.DOCKER_USER }}/app1:latest
+      - name: Push Image
+        run: |
+          docker push ${{ secrets.DOCKER_USER }}/app1:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 140.238.206.93
+          username: ubuntu
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/apps
+            docker compose pull
+            docker compose up -d          
