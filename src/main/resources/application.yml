@@ -1,0 +1,48 @@
+server:
+  port: 8081
+
+client:
+  b:
+    base-url: http://localhost:8082
+
+resilience4j:
+  retry:
+    configs:
+      bService:
+        # Tổng số lần thử = 1 (lần đầu) + (max-attempts - 1) retry.
+        # Ví dụ max-attempts=3 => tối đa gọi B 3 lần.
+        max-attempts: 3
+        # Nghỉ giữa các lần retry.
+        wait-duration: 500ms
+        # Những loại lỗi sẽ được coi là “có thể retry”.
+        # - TimeoutException: lấy link từ TimeLimiter
+        # - RestClientException: lỗi call RestTemplate (gồm 5xx, kết nối lỗi...)
+        retry-exceptions:
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.RestClientException
+#  timelimiter:
+#    instances:
+#      bService:
+#        # Giới hạn thời gian cho việc hoàn thành call (A -> B).
+#        # Nếu vượt quá thì TimeLimiter timeout và A sẽ chuyển sang retry/fallback tùy annotation.
+#        timeout-duration: 4s
+#        # Khi timeout xảy ra, cố gắng hủy “future” đang chạy (tùy implement).
+#        # Mục tiêu là tránh giữ thread/chờ tài nguyên quá lâu.
+#        cancel-running-future: true
+  circuitbreaker:
+    instances:
+      bService:
+        # sliding-window-type COUNT_BASED: đếm theo số lần gọi (không theo thời gian).
+        sliding-window-type: COUNT_BASED
+        # Trong cửa sổ gồm 5 lần gọi gần nhất, CB sẽ tính failure rate để quyết định OPEN/CLOSED.
+        sliding-window-size: 5
+        # Chưa đủ số lần gọi tối thiểu thì CB sẽ không đánh giá fail-rate để mở mạch.
+        minimum-number-of-calls: 3
+        # Nếu failure-rate >= 50% trên sliding window => chuyển sang OPEN.
+        failure-rate-threshold: 50
+        # Khi CB ở OPEN, trong thời gian này request sẽ bị short-circuit (không gọi B).
+        # Sau hết wait-duration-in-open-state sẽ chuyển sang HALF_OPEN để thử lại.
+        wait-duration-in-open-state: 30s
+        # Khi HALF_OPEN, cho phép thử tối đa N request.
+        # Nếu thử mà vẫn fail nhiều => lại OPEN, nếu tốt => quay lại CLOSED.
+        permitted-number-of-calls-in-half-open-state: 2

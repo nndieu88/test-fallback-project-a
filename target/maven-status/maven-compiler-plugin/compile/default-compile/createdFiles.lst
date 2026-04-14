@@ -1,0 +1,4 @@
+com\demo\projecta\controller\AController.class
+com\demo\projecta\service\BClientService.class
+com\demo\projecta\config\WebClientConfig.class
+com\demo\projecta\ProjectAApplication.class
