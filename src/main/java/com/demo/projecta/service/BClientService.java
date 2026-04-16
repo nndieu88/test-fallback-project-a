@@ -2,6 +2,7 @@ package com.demo.projecta.service;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -10,6 +11,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class BClientService {
 
     private final RestTemplate bRestTemplate;
@@ -22,7 +24,11 @@ public class BClientService {
     @CircuitBreaker(name = "bService", fallbackMethod = "fallback")
     @Retry(name = "bService", fallbackMethod = "fallback")
     public ResponseEntity<?> callB(String mode) {
-        var res = bRestTemplate.getForObject("/api/b/data?mode={mode}", String.class, mode);
+        String path = "/api/b/data?mode=" + mode;
+        String fullUrl = bRestTemplate.getUriTemplateHandler().expand(path).toString();
+        log.info("Calling B service: {}", fullUrl);
+        var res = bRestTemplate.getForObject(path, String.class, mode);
+        log.info("Calling B service: {}", res);
         return ResponseEntity.ok(Map.of("data", res));
     }
 
