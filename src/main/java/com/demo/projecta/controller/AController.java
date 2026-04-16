@@ -19,4 +19,9 @@ public class AController {
     public ResponseEntity<?> proxy(@RequestParam(defaultValue = "ok") String mode) {
         return bClientService.callB(mode);
     }
+
+    @GetMapping("/api/a/proxy-v2")
+    public ResponseEntity<?> proxyV2(@RequestParam(defaultValue = "ok") String mode) {
+        return bClientService.callBV2(mode);
+    }
 }

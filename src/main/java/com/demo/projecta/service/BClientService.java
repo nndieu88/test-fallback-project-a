@@ -37,4 +37,13 @@ public class BClientService {
                 + ", reason=" + throwable.getClass().getSimpleName();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("data", message));
     }
+
+    public ResponseEntity<?> callBV2(String mode) {
+        String path = "/api/b/data?mode=" + mode;
+        String fullUrl = bRestTemplate.getUriTemplateHandler().expand(path).toString();
+        log.info("Calling B service: {}", fullUrl);
+        var res = bRestTemplate.getForObject(path, String.class, mode);
+        log.info("Calling B service: {}", res);
+        return ResponseEntity.ok(Map.of("data", res));
+    }
 }
