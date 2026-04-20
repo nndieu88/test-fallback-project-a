@@ -10,8 +10,8 @@ client:
 logging:
   level:
     root: INFO
-  pattern:
-    console: "%msg %n"
+#  pattern:
+#    console: "%msg %n"
 
 resilience4j:
   retry:
