@@ -1,47 +1,105 @@
-name: Build & Push Docker
+name: Production Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    tags:
+      - 'v*.*.*'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+
+  validate:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+
+      # 1. verify tag from main
+      - name: Check tag is on main
+        run: |
+          git fetch origin main
+
+          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref_name }})
+
+          if ! git merge-base --is-ancestor \
+             $TAG_COMMIT origin/main
+          then
+             exit 1
+          fi
+
+      # 2. verify semver increases
+      - name: Check version ordering
+        run: |
+          PREV=$(git tag --sort=-v:refname \
+             | head -2 | tail -1)
+
+          if [ -n "$PREV" ]; then
+            if [ "$(printf '%s\n' "$PREV" "${{ github.ref_name }}" \
+               | sort -V | tail -1)" \
+               != "${{ github.ref_name }}" ]
+            then
+               exit 1
+            fi
+          fi
+
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug info
+      - name: Docker login
         run: |
-          docker --version
+          echo "${{ secrets.DOCKER_PASS }}" \
+          | docker login \
+          -u "${{ secrets.DOCKER_USER }}" \
+          --password-stdin
 
-      - name: Login Docker Hub
+      - name: Build
         run: |
-          echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+          docker build \
+            -t ${{ secrets.DOCKER_USER }}/app1:${{ needs.validate.outputs.version }} \
+            -t ${{ secrets.DOCKER_USER }}/app1:latest \
+            .
 
-      - name: Build Image
+      - name: Push
         run: |
-          docker build -t ${{ secrets.DOCKER_USER }}/app1:latest .
-
-      - name: Push Image
-        run: |
+          docker push ${{ secrets.DOCKER_USER }}/app1:${{ needs.validate.outputs.version }}
           docker push ${{ secrets.DOCKER_USER }}/app1:latest
+
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to VPS
+      - name: Deploy VPS
         uses: appleboy/ssh-action@v1
+
         with:
           host: 140.238.206.93
           username: ubuntu
           key: ${{ secrets.SSH_KEY }}
+
           script: |
             cd /opt/apps
+
             docker compose pull
-            docker compose up -d          
+
+            docker compose up -d
+
+            docker image prune -af
